@@ -1,0 +1,82 @@
+<html>
+	<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Sodium - Some gadget</title>
+    <style>
+      #map {
+        height: 100%;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  	</head>
+	<body>
+		<div id="map"></div>
+		<script>
+
+			// Conversion de coordonnées gps en format D°M.m vers D.d
+	    	function toDec(coord){
+				var value = (coord.v / coord.s).toString();
+				var i = value.indexOf(".");
+
+				// D = D
+				var degrees = parseInt(value.slice(0,i-2));
+
+				// d = M * 0.0166667
+				var minutes = parseFloat(value.slice(i-2))*0.0166667;
+
+				if(degrees >= 0)
+					return degrees + minutes;
+				return degrees - minutes;
+			}
+
+			function initMap() {
+
+				// Changer l'adresse du server WebSocket ici:
+				const serverAddress = "ws://192.168.0.185:8080"
+
+				var ws = new WebSocket(serverAddress);
+
+				var map;
+				var poly;
+
+				ws.onmessage = function (event) {
+					data = JSON.parse(event.data);
+					latLon = {
+				    	lat: toDec(data.lat),
+				    	lng: toDec(data.lon) 
+				    };
+
+				    if(!map){
+				    	map = new google.maps.Map(document.getElementById('map'), {
+						  zoom: 18,
+						  center: latLon,
+						  mapTypeId: 'terrain'
+						});
+
+						poly = new google.maps.Polyline({
+					      path: [],
+					      geodesic: true,
+					      strokeColor: '#FF0000',
+					      strokeOpacity: 1.0,
+					      strokeWeight: 4
+					    });
+
+						poly.setMap(map);
+				    }
+
+				    var path = poly.getPath();
+				    console.log(latLon)
+				    path.push(new google.maps.LatLng(latLon.lat, latLon.lng));
+				}
+			}
+	    </script>
+	    <script async defer
+		    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnBoXRPle0ctR6WWfIzPSX6yorxQ17LiU&callback=initMap">
+	    </script>
+	</body>
+</html>
