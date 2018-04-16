@@ -11,7 +11,9 @@ wss.broadcast = function broadcast(data) {
 };
 
 wss.on('connection', function connection(ws) {
-	console.log("connexion!!")
+  console.log("connexion!!")
+ws.on('error', () => console.log('errored'));
+  
   ws.on('message', function incoming(data) {
     // Broadcast to everyone else.
 	console.log("incoming data:\n" + data)
@@ -22,3 +24,5 @@ wss.on('connection', function connection(ws) {
     });
   });
 });
+
+wss.on('error', () => console.log('errored'));

@@ -1,0 +1,122 @@
+<html>
+	<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Sodium - Some gadget</title>
+    <style>
+      #map {
+        height: 100%;
+				width: 78%;
+				float: right;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+			#info {
+				float: left;
+				width: 20%;
+				height:500px;
+				overflow-y: scroll;
+				background-color: beige;
+				padding: 10px;
+			}
+    </style>
+  	</head>
+	<body>
+		<div id="info">
+			<b>Vitesse:</b> <span id="speed">0</span><br/>
+			<b>Vitesse moyenne:</b> <span id="avgSpeed">0</span><br/>
+			<b>Distance parcourue:</b> <span id="distance">0</span><br/>
+			<b>Nombre de pas:</b> <span id="steps">0</span><br/>
+			<b>Temps de passage:</b><br/><ol id="checkpoints"></ol>
+		</div>
+		<div id="map"></div>
+		<script>
+
+			// Conversion de coordonnées gps en format D°M.m vers D.d
+	    	function toDec(coord){
+				var value = (coord.v / coord.s).toString();
+				var i = value.indexOf(".");
+
+				// D = D
+				var degrees = parseInt(value.slice(0,i-2));
+
+				// d = M * 0.0166667
+				var minutes = parseFloat(value.slice(i-2))*0.0166667;
+
+				if(degrees >= 0)
+					return degrees + minutes;
+				return degrees - minutes;
+			}
+
+			function initMap() {
+
+				// Changer l'adresse du server WebSocket ici:
+				const serverAddress = "ws://localhost:8080"
+
+				var ws = new WebSocket(serverAddress);
+				
+				var map;
+				var poly;
+				var marker;
+				var centerIsSet = false;
+				var speedElem = document.getElementById("speed");
+				var distanceElem = document.getElementById("distance");
+				var avgSpeedElem = document.getElementById("avgSpeed");
+				var checkpointsElem = document.getElementById("checkpoints");
+				var stepsElem = document.getElementById("steps");
+				var lengthInMeters = 0;
+				
+				map = new google.maps.Map(document.getElementById('map'), {
+					zoom: 18,
+					mapTypeId: 'terrain',
+					center: {lat: 0, lng:0}
+				});
+				poly = new google.maps.Polyline({
+					path: [],
+					geodesic: true,
+					strokeColor: '#FF0000',
+					strokeOpacity: 1.0,
+					strokeWeight: 4
+				});
+				poly.setMap(map);
+						
+				ws.onmessage = function (event) {
+					var data = JSON.parse(event.data);
+					if(data["lat"]){
+						var latLon = {
+							lat: toDec(data["lat"]),
+							lng: toDec(data["lon"]) 
+						};
+						console.log(latLon);
+						var pos = new google.maps.LatLng(latLon.lat, latLon.lng);
+						if(!centerIsSet){
+							marker = new google.maps.Marker( {position: latLon, map: map} );
+							map.setCenter(pos);
+							centerIsSet = true;
+							activityStartTime = latLon;
+							//marker.addListener('click', function() {
+									
+							//});
+						}
+						speedElem.innerHTML = data["spd"].toFixed(2)+" km/h";
+						avgSpeedElem.innerHTML = data["aspd"].toFixed(2)+" km/h";
+						var path = poly.getPath();
+						path.push(pos);
+						lengthInMeters = google.maps.geometry.spherical.computeLength(path);
+						distanceElem.innerHTML = lengthInMeters.toFixed(2) + " m";
+						stepsElem.innerHTML = data["step"];
+						marker.setPosition(pos);
+					}else if(data["chk"]){
+						checkpointsElem.innerHTML += "<li>"+(data["chk"]/1000).toFixed(2)+"s : "+lengthInMeters.toFixed(2) + " m"+"</li>";
+					}
+				}
+			}
+	    </script>
+	    <script async defer
+		    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnBoXRPle0ctR6WWfIzPSX6yorxQ17LiU&callback=initMap">
+	    </script>
+	</body>
+</html>
